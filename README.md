@@ -47,6 +47,10 @@ between the two libraries.
   `json.RawMessage` (the exact Garmin payload). Any uncovered endpoint can be
   called through the low-level escape hatch `client.Do`.
 
+- **MCP server** (`pkg/mcp` + `garmin mcp`): exposes the client as a
+  [Model Context Protocol](https://modelcontextprotocol.io) server so LLM
+  agents can read your Garmin data. See [MCP server](#mcp-server) below.
+
 - Zero dependencies (standard library only), Go ≥ 1.26.
 
 ## Getting tokens (CLI)
@@ -73,6 +77,7 @@ Other commands:
 ```console
 $ go run ./cmd/garmin whoami    # verify the stored tokens
 $ go run ./cmd/garmin refresh   # force a refresh (persists the rotated refresh token)
+$ go run ./cmd/garmin mcp       # run the MCP server over stdio (see below)
 ```
 
 > Garmin **rotates the refresh token on every refresh**: the file is rewritten
@@ -113,6 +118,74 @@ client := garmin.NewClient(creds)
 
 See [examples/activities](examples/activities/main.go) and the package
 documentation for more.
+
+## MCP server
+
+`pkg/mcp` exposes the Garmin client as a [Model Context Protocol](https://modelcontextprotocol.io)
+server over stdio (JSON-RPC 2.0, standard library only — no MCP SDK
+dependency), inspired by [taxuspt/garmin_mcp](https://github.com/taxuspt/garmin_mcp).
+It offers ~29 read tools: `get_profile`, `list_activities`, `get_activity`,
+`get_activity_details`, `get_daily_summary`, `get_sleep`, `get_heart_rate`,
+`get_body_battery`, `get_stress`, `get_hrv`, `get_training_readiness`,
+`get_vo2max`, `get_weight`, `get_devices`, `get_personal_records`, and more.
+
+It reuses the same token file as the library. Get one first with
+`garmin login` (see above).
+
+### Run locally
+
+```console
+$ GARMINTOKENS=~/.garminconnect/garmin_tokens.json go run ./cmd/garmin mcp
+```
+
+Configure an MCP client (e.g. Claude Desktop) to launch it:
+
+```json
+{
+  "mcpServers": {
+    "garmin": {
+      "command": "garmin",
+      "args": ["mcp"],
+      "env": { "GARMINTOKENS": "/Users/you/.garminconnect/garmin_tokens.json" }
+    }
+  }
+}
+```
+
+### Run in Docker
+
+Build the image and run the server, sharing your local token directory
+(mounted read-write so rotated refresh tokens persist back to the host):
+
+```console
+$ docker compose run --rm garmin-mcp
+```
+
+or, as a standalone MCP client command:
+
+```console
+$ docker run -i --rm \
+    -v ~/.garminconnect:/tokens \
+    ndeloof/go-garmin mcp
+```
+
+The corresponding MCP client config:
+
+```json
+{
+  "mcpServers": {
+    "garmin": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm",
+               "-v", "/Users/you/.garminconnect:/tokens",
+               "ndeloof/go-garmin", "mcp"]
+    }
+  }
+}
+```
+
+The [`Dockerfile`](Dockerfile) builds a static binary into a distroless image;
+[`compose.yaml`](compose.yaml) wires the token mount and stdio for you.
 
 ## Integration tests
 

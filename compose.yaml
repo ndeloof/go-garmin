@@ -1,0 +1,18 @@
+# Run the go-garmin MCP server in a container, sharing the local Garmin token
+# file. MCP uses stdio, so start it attached:
+#
+#   docker compose run --rm garmin-mcp
+#
+# or point an MCP client at that command. The ~/.garminconnect directory is
+# mounted read-write so rotated refresh tokens are persisted back to the host.
+services:
+  garmin-mcp:
+    build: .
+    image: ndeloof/go-garmin
+    command: ["mcp"]
+    stdin_open: true   # keep stdin open for the JSON-RPC stream
+    tty: false         # raw stdio, not a terminal
+    volumes:
+      - ${HOME}/.garminconnect:/tokens
+    environment:
+      GARMINTOKENS: /tokens/garmin_tokens.json

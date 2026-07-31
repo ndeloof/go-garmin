@@ -30,6 +30,8 @@ func main() {
 		err = cmdWhoami(ctx, flag.Args()[1:])
 	case "refresh":
 		err = cmdRefresh(ctx, flag.Args()[1:])
+	case "mcp":
+		err = cmdMCP(ctx, flag.Args()[1:])
 	case "", "help", "-h", "--help":
 		usage()
 	default:
@@ -50,6 +52,7 @@ Commands:
   login     log in to Garmin Connect (email, password, 2FA) and write the token file
   whoami    verify the stored tokens by fetching the Garmin profile
   refresh   force an access-token refresh and persist the rotated refresh token
+  mcp       run a Model Context Protocol server (stdio) exposing Garmin data
 
 Flags (all commands):
   --tokens <path>   token file (default: $GARMINTOKENS or ~/.garminconnect/garmin_tokens.json)

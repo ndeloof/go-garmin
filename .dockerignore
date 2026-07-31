@@ -1,0 +1,6 @@
+.git
+.github
+*.tokens.json
+garmin_tokens.json
+dist
+README.md
