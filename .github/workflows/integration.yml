@@ -1,0 +1,37 @@
+# Integration tests against the real Garmin Connect API.
+#
+# Never runs on pull requests: it consumes the GARMINTOKENS secret and Garmin
+# rate-limits aggressively. Trigger it manually, or let the nightly schedule
+# catch API drift.
+#
+# The GARMINTOKENS secret holds the token JSON inline
+# ({"di_token","di_refresh_token","di_client_id"}). Mint it locally with
+# `go run ./cmd/garmin login`, then:
+#
+#   gh secret set GARMINTOKENS < ~/.garminconnect/garmin_tokens.json
+#
+# Note: the access token in the secret eventually expires and CI refreshes it
+# in memory only; when the refresh token itself rotates or expires, re-mint
+# and update the secret.
+name: Integration
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    if: github.repository == 'ndeloof/go-garmin'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test -tags integration ./integration/ -v
+        env:
+          GARMINTOKENS: ${{ secrets.GARMINTOKENS }}
