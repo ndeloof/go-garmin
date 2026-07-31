@@ -166,7 +166,7 @@ or, as a standalone MCP client command:
 ```console
 $ docker run -i --rm \
     -v ~/.garminconnect:/tokens \
-    ndeloof/go-garmin mcp
+    ndeloof/garmin_mcp mcp
 ```
 
 The corresponding MCP client config:
@@ -178,7 +178,7 @@ The corresponding MCP client config:
       "command": "docker",
       "args": ["run", "-i", "--rm",
                "-v", "/Users/you/.garminconnect:/tokens",
-               "ndeloof/go-garmin", "mcp"]
+               "ndeloof/garmin_mcp", "mcp"]
     }
   }
 }
@@ -186,6 +186,15 @@ The corresponding MCP client config:
 
 The [`Dockerfile`](Dockerfile) builds a static binary into a distroless image;
 [`compose.yaml`](compose.yaml) wires the token mount and stdio for you.
+
+The published image lives at
+[`ndeloof/garmin_mcp`](https://hub.docker.com/repository/docker/ndeloof/garmin_mcp)
+on Docker Hub. To (re)publish it:
+
+```console
+$ docker build -t ndeloof/garmin_mcp:latest .
+$ docker push ndeloof/garmin_mcp:latest
+```
 
 ## Integration tests
 
