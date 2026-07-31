@@ -214,6 +214,95 @@ func garminTools(c *garmin.Client) []tool {
 			func(ctx context.Context, s, e garmin.Date) (any, error) { return c.Weight.BodyComposition(ctx, s, e) }),
 		noArgTool("get_personal_records", "Get the account's personal records.",
 			func(ctx context.Context) (any, error) { return c.Records.PersonalRecords(ctx) }),
+
+		// Workouts.
+		{
+			Name:        "list_workouts",
+			Description: "List the account's structured workouts.",
+			Schema: objectSchema(map[string]any{
+				"limit": intProp("Max workouts to return (default 100)"),
+				"start": intProp("Offset for pagination (default 0)"),
+			}),
+			Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				a, err := decode[struct {
+					Limit int `json:"limit"`
+					Start int `json:"start"`
+				}](raw)
+				if err != nil {
+					return nil, err
+				}
+				return c.Workouts.List(ctx, &garmin.ListOptions{Start: a.Start, Limit: a.Limit})
+			},
+		},
+		workoutIDTool("get_workout", "Get one structured workout's full payload.",
+			func(ctx context.Context, id int64) (any, error) { return c.Workouts.Get(ctx, id) }),
+		{
+			Name:        "create_workout",
+			Description: "Create a structured workout. Takes the full workout-service JSON payload (workoutName, sportType, workoutSegments with ExecutableStepDTO/RepeatGroupDTO steps — the same shape returned by get_workout).",
+			Schema: objectSchema(map[string]any{
+				"workout": map[string]any{"type": "object", "description": "Full workout-service workout payload"},
+			}, "workout"),
+			Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				a, err := decode[struct {
+					Workout json.RawMessage `json:"workout"`
+				}](raw)
+				if err != nil {
+					return nil, err
+				}
+				if len(a.Workout) == 0 {
+					return nil, fmt.Errorf("workout is required")
+				}
+				return c.Workouts.Create(ctx, a.Workout)
+			},
+		},
+		workoutIDTool("delete_workout", "Delete a structured workout.",
+			func(ctx context.Context, id int64) (any, error) { return nil, c.Workouts.Delete(ctx, id) }),
+		{
+			Name:        "schedule_workout",
+			Description: "Schedule a workout on the Garmin Connect calendar.",
+			Schema: objectSchema(map[string]any{
+				"workout_id": intProp("Garmin workout id"),
+				"date":       dateProp,
+			}, "workout_id"),
+			Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				a, err := decode[struct {
+					WorkoutID int64  `json:"workout_id"`
+					Date      string `json:"date"`
+				}](raw)
+				if err != nil {
+					return nil, err
+				}
+				if a.WorkoutID == 0 {
+					return nil, fmt.Errorf("workout_id is required")
+				}
+				d, err := dateArgs{Date: a.Date}.date()
+				if err != nil {
+					return nil, err
+				}
+				return c.Workouts.Schedule(ctx, a.WorkoutID, d)
+			},
+		},
+	}
+}
+
+// workoutIDTool wires a tool taking a required workout_id.
+func workoutIDTool(name, desc string, fn func(context.Context, int64) (any, error)) tool {
+	return tool{
+		Name:        name,
+		Description: desc,
+		Schema:      objectSchema(map[string]any{"workout_id": intProp("Garmin workout id")}, "workout_id"),
+		Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+			a, err := decode[struct {
+				WorkoutID int64 `json:"workout_id"`
+			}](raw)
+			if err != nil {
+				return nil, err
+			}
+			if a.WorkoutID == 0 {
+				return nil, fmt.Errorf("workout_id is required")
+			}
+			return fn(ctx, a.WorkoutID)
+		},
 	}
 }
 
