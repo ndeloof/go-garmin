@@ -85,16 +85,9 @@ func cmdRefresh(ctx context.Context, args []string) error {
 	_ = fs.Parse(args)
 
 	store := garmin.NewFileTokenStore(*tokens)
-	creds, err := store.Load(ctx)
+	refreshed, err := garmin.RefreshStore(ctx, store)
 	if err != nil {
 		return err
-	}
-	refreshed, err := garmin.Refresh(ctx, creds)
-	if err != nil {
-		return err
-	}
-	if err := store.Save(ctx, refreshed); err != nil {
-		return fmt.Errorf("token refreshed but saving failed (the old refresh token is now invalid!): %w", err)
 	}
 	fmt.Printf("Tokens refreshed and written to %s (access token expires %s)\n",
 		store.Path(), refreshed.Expiry().Local().Format("2006-01-02 15:04:05"))

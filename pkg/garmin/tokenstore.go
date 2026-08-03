@@ -20,6 +20,45 @@ type TokenStore interface {
 	Save(ctx context.Context, creds *Credentials) error
 }
 
+// LockingTokenStore is an optional TokenStore extension providing exclusive
+// cross-process access around a load-refresh-save sequence. When the store
+// implements it, the client serializes refreshes across processes and reloads
+// the stored credentials before refreshing, so concurrent consumers of one
+// store never spend the same (single-use) refresh token — a reuse Garmin
+// answers by revoking the whole credential family.
+type LockingTokenStore interface {
+	TokenStore
+	// Lock blocks until the exclusive lock is held or ctx is done, and
+	// returns the function that releases it.
+	Lock(ctx context.Context) (unlock func(), err error)
+}
+
+// RefreshStore refreshes the credentials held in store — under its exclusive
+// lock when the store supports one — and persists the rotation. The load
+// happens after the lock is taken so the freshest refresh token is the one
+// spent.
+func RefreshStore(ctx context.Context, store TokenStore, opts ...LoginOption) (*Credentials, error) {
+	if ls, ok := store.(LockingTokenStore); ok {
+		unlock, err := ls.Lock(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("garmin: locking token store: %w", err)
+		}
+		defer unlock()
+	}
+	creds, err := store.Load(ctx)
+	if err != nil {
+		return nil, err
+	}
+	refreshed, err := Refresh(ctx, creds, opts...)
+	if err != nil {
+		return nil, err
+	}
+	if err := store.Save(ctx, refreshed); err != nil {
+		return nil, &tokenSaveError{err}
+	}
+	return refreshed, nil
+}
+
 // FileTokenStore stores credentials in the python-garminconnect token file
 // format: {"di_token","di_refresh_token","di_client_id"}, mode 0600. Files
 // are interchangeable with python-garminconnect.
@@ -40,6 +79,16 @@ func NewFileTokenStore(path string) *FileTokenStore {
 
 // Path returns the resolved token file path.
 func (s *FileTokenStore) Path() string { return s.path }
+
+// Lock implements LockingTokenStore with an exclusive lock on a sibling
+// <path>.lock file (never the token file itself, whose inode is replaced by
+// Save's write-then-rename).
+func (s *FileTokenStore) Lock(ctx context.Context) (func(), error) {
+	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
+		return nil, err
+	}
+	return acquireFileLock(ctx, s.path+".lock")
+}
 
 func resolveTokenPath(path string) string {
 	if path == "" {

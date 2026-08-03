@@ -18,6 +18,7 @@ package garmin
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -272,6 +273,25 @@ func (ts *tokenSource) invalidate(ctx context.Context, stale string) (string, er
 }
 
 func (ts *tokenSource) refreshLocked(ctx context.Context) error {
+	if ls, ok := ts.store.(LockingTokenStore); ok {
+		unlock, err := ls.Lock(ctx)
+		if err != nil {
+			return fmt.Errorf("garmin: locking token store: %w", err)
+		}
+		defer unlock()
+		// While we waited for the lock another process may have refreshed
+		// (and rotated) the credential. Adopt the stored version when it is
+		// fresh; otherwise refresh from it — its refresh token is the only
+		// one still valid.
+		if stored, err := ls.Load(ctx); err == nil && stored.RefreshToken != "" {
+			if stored.AccessToken != "" && stored.AccessToken != ts.creds.AccessToken && !stored.Expired(ts.margin) {
+				ts.creds = stored
+				ts.logger.Debug("garmin credentials adopted from token store (refreshed by another process)")
+				return nil
+			}
+			ts.creds = stored
+		}
+	}
 	next, err := refreshCredentials(ctx, ts.hc, ts.tokenURL, ts.creds)
 	if err != nil {
 		return err
