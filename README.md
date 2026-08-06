@@ -1,13 +1,13 @@
 # go-garmin
 
-Go client for the **unofficial Garmin Connect API** (`connectapi.garmin.com`) —
-the API used by the Garmin Connect mobile apps — authenticated with a regular
-Garmin account (email / password / 2FA). **No Garmin Connect Developer Program
-token required.**
-
-It is a Go port of [python-garminconnect](https://github.com/cyberjunky/python-garminconnect):
-the endpoint coverage mirrors it and the **token files are interchangeable**
-between the two libraries.
+Go client and **[MCP server](#mcp-server)** for the **unofficial Garmin
+Connect API** (`connectapi.garmin.com`) — the API used by the Garmin Connect
+mobile apps — authenticated with a regular Garmin account (email / password /
+2FA). **No Garmin Connect Developer Program token required.** Give an LLM
+agent (Claude, etc.) access to your activities, health metrics, workouts and
+courses through the MCP server — run over stdio or Docker for yourself, or
+embedded over HTTP in a multi-user web app — or drive the ~150-method typed
+Go client directly.
 
 > ⚠️ This is not a Garmin-supported API. Endpoints may change without notice,
 > and Garmin aggressively rate-limits datacenter/cloud IPs (expect
@@ -37,7 +37,8 @@ between the two libraries.
   | Activities (search, details, splits, weather, zones, CRUD) | `client.Activities` |
   | Upload (FIT/GPX/TCX) / download (original ZIP, TCX/GPX/KML/CSV) | `client.Upload` / `client.Download` |
   | Gear | `client.Gear` |
-  | Workouts, calendar, training plans | `client.Workouts` |
+  | Workouts, calendar, training plans, device push | `client.Workouts` |
+  | Courses (GPS routes): list, GPX import/export, delete, device push | `client.Courses` |
   | Nutrition | `client.Nutrition` |
   | Women's health | `client.WomensHealth` |
   | Golf | `client.Golf` |
@@ -68,9 +69,8 @@ Logged in as Jane Doe (f2f16b0e-…)
 ```
 
 The token file (`~/.garminconnect/garmin_tokens.json` by default, or
-`$GARMINTOKENS`, or `--tokens <path>`) is the same
-`{"di_token","di_refresh_token","di_client_id"}` file python-garminconnect
-writes — either library can use the other's file.
+`$GARMINTOKENS`, or `--tokens <path>`) is a small
+`{"di_token","di_refresh_token","di_client_id"}` JSON document.
 
 Other commands:
 
@@ -122,12 +122,20 @@ documentation for more.
 ## MCP server
 
 `pkg/mcp` exposes the Garmin client as a [Model Context Protocol](https://modelcontextprotocol.io)
-server over stdio (JSON-RPC 2.0, standard library only — no MCP SDK
-dependency), inspired by [taxuspt/garmin_mcp](https://github.com/taxuspt/garmin_mcp).
-It offers ~29 read tools: `get_profile`, `list_activities`, `get_activity`,
-`get_activity_details`, `get_daily_summary`, `get_sleep`, `get_heart_rate`,
-`get_body_battery`, `get_stress`, `get_hrv`, `get_training_readiness`,
-`get_vo2max`, `get_weight`, `get_devices`, `get_personal_records`, and more.
+server (JSON-RPC 2.0, standard library only — no MCP SDK dependency),
+inspired by [taxuspt/garmin_mcp](https://github.com/taxuspt/garmin_mcp).
+It offers ~39 tools:
+
+- **read**: `get_profile`, `list_activities`, `get_activity`,
+  `get_activity_details`, `get_activity_splits`, `get_daily_summary`,
+  `get_sleep`, `get_heart_rate`, `get_body_battery`, `get_stress`, `get_hrv`,
+  `get_training_readiness`, `get_training_status`, `get_vo2max`,
+  `get_endurance_score`, `get_hill_score`, `get_race_predictions`,
+  `get_weight`, `get_devices`, `get_personal_records`, and more;
+- **workouts**: `list_workouts`, `get_workout`, `create_workout`,
+  `delete_workout`, `schedule_workout`;
+- **courses**: `list_courses`, `get_course`, `import_course_gpx`,
+  `delete_course`, `push_course_to_device`.
 
 It reuses the same token file as the library. Get one first with
 `garmin login` (see above).
@@ -194,6 +202,39 @@ on Docker Hub. To (re)publish it:
 ```console
 $ docker build -t ndeloof/garmin_mcp:latest .
 $ docker push ndeloof/garmin_mcp:latest
+```
+
+### Embed over HTTP (multi-user)
+
+`mcp.NewHTTPHandler` serves the same tools over the MCP streamable-HTTP
+transport (one JSON-RPC message per POST, stateless). The `resolve` callback
+authenticates each request and returns the Garmin client to serve it with, so
+a web application can expose a single MCP endpoint for many users, each with
+their own stored credentials:
+
+```go
+handler := mcp.NewHTTPHandler(func(r *http.Request) (*garmin.Client, error) {
+    user, err := authenticate(r) // your auth: bearer token, session…
+    if err != nil {
+        return nil, err // → HTTP 401
+    }
+    return clientForUser(user), nil // e.g. garmin.NewClientFromStore per user
+})
+http.Handle("/garmin/mcp", handler)
+```
+
+MCP clients connect with plain HTTP config — e.g. for Claude Code:
+
+```json
+{
+  "mcpServers": {
+    "garmin": {
+      "type": "http",
+      "url": "https://example.com/garmin/mcp",
+      "headers": { "Authorization": "Bearer <your token>" }
+    }
+  }
+}
 ```
 
 ## Integration tests
