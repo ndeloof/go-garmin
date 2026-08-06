@@ -1,4 +1,6 @@
-# go-garmin
+<p align="center">
+  <img src="logo.png" alt="go-garmin" width="520">
+</p>
 
 Go client and **[MCP server](#mcp-server)** for the **unofficial Garmin
 Connect API** (`connectapi.garmin.com`) — the API used by the Garmin Connect
