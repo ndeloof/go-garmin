@@ -15,6 +15,12 @@ import (
 
 func testServer(t *testing.T) *Server {
 	t.Helper()
+	return NewServer(testClient(t))
+}
+
+// testClient wires a garmin client to a fake backend.
+func testClient(t *testing.T) *garmin.Client {
+	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/userprofile-service/socialProfile", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -31,8 +37,7 @@ func testServer(t *testing.T) *Server {
 	t.Cleanup(srv.Close)
 
 	creds := &garmin.Credentials{AccessToken: unsignedJWT(t), RefreshToken: "r", ClientID: "c"}
-	client := garmin.NewClient(creds, garmin.WithBaseURL(srv.URL))
-	return NewServer(client)
+	return garmin.NewClient(creds, garmin.WithBaseURL(srv.URL))
 }
 
 // unsignedJWT builds a JWT that expires far in the future so no refresh fires.

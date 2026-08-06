@@ -1,6 +1,8 @@
 package mcp
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -12,12 +14,12 @@ import (
 
 func testHTTPHandler(t *testing.T) http.Handler {
 	t.Helper()
-	s := testServer(t) // reuses the fake Garmin backend wiring
+	client := testClient(t) // fake Garmin backend wiring
 	return NewHTTPHandler(func(r *http.Request) (*garmin.Client, error) {
 		if r.Header.Get("Authorization") != "Bearer good" {
 			return nil, errors.New("bad token")
 		}
-		return s.client, nil
+		return client, nil
 	})
 }
 
@@ -96,4 +98,33 @@ func truncateStr(s string, n int) string {
 		return s[:n] + "…"
 	}
 	return s
+}
+
+// TestHTTPCustomToolServer exercises the domain-neutral plumbing: a server
+// built with NewToolServer and application tools, served over HTTP.
+func TestHTTPCustomToolServer(t *testing.T) {
+	s := NewToolServer("my-app", "9.9", Tool{
+		Name:        "echo",
+		Description: "Echo the input.",
+		Schema:      objectSchema(map[string]any{"msg": strProp("message")}, "msg"),
+		Handler: func(_ context.Context, raw json.RawMessage) (any, error) {
+			var a struct {
+				Msg string `json:"msg"`
+			}
+			if err := json.Unmarshal(raw, &a); err != nil {
+				return nil, err
+			}
+			return map[string]string{"echo": a.Msg}, nil
+		},
+	})
+	h := NewHTTPServerHandler(func(r *http.Request) (*Server, error) { return s, nil })
+
+	rec := doPost(t, h, "", `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}`)
+	if !strings.Contains(rec.Body.String(), "my-app") || !strings.Contains(rec.Body.String(), "9.9") {
+		t.Fatalf("initialize should carry the custom serverInfo: %s", rec.Body)
+	}
+	rec = doPost(t, h, "", `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"echo","arguments":{"msg":"bonjour"}}}`)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "bonjour") {
+		t.Fatalf("echo call: %d %s", rec.Code, rec.Body)
+	}
 }

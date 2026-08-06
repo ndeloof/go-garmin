@@ -72,8 +72,8 @@ func (a rangeArgs) span(defDays int) (start, end garmin.Date, err error) {
 }
 
 // dateTool wires a "date"-only tool to a client method.
-func dateTool(name, desc string, fn func(context.Context, garmin.Date) (any, error)) tool {
-	return tool{
+func dateTool(name, desc string, fn func(context.Context, garmin.Date) (any, error)) Tool {
+	return Tool{
 		Name:        name,
 		Description: desc,
 		Schema:      objectSchema(map[string]any{"date": dateProp}),
@@ -91,8 +91,8 @@ func dateTool(name, desc string, fn func(context.Context, garmin.Date) (any, err
 	}
 }
 
-func rangeTool(name, desc string, defDays int, fn func(context.Context, garmin.Date, garmin.Date) (any, error)) tool {
-	return tool{
+func rangeTool(name, desc string, defDays int, fn func(context.Context, garmin.Date, garmin.Date) (any, error)) Tool {
+	return Tool{
 		Name:        name,
 		Description: desc,
 		Schema: objectSchema(map[string]any{
@@ -113,8 +113,8 @@ func rangeTool(name, desc string, defDays int, fn func(context.Context, garmin.D
 	}
 }
 
-func noArgTool(name, desc string, fn func(context.Context) (any, error)) tool {
-	return tool{
+func noArgTool(name, desc string, fn func(context.Context) (any, error)) Tool {
+	return Tool{
 		Name:        name,
 		Description: desc,
 		Handler:     func(ctx context.Context, _ json.RawMessage) (any, error) { return fn(ctx) },
@@ -122,8 +122,8 @@ func noArgTool(name, desc string, fn func(context.Context) (any, error)) tool {
 }
 
 // garminTools returns the full tool set exposed for a client.
-func garminTools(c *garmin.Client) []tool {
-	return []tool{
+func garminTools(c *garmin.Client) []Tool {
+	return []Tool{
 		// Profile & devices.
 		noArgTool("get_profile", "Get the Garmin Connect social profile (name, display name, level).",
 			func(ctx context.Context) (any, error) { return c.UserProfile.SocialProfile(ctx) }),
@@ -337,8 +337,8 @@ func garminTools(c *garmin.Client) []tool {
 }
 
 // courseIDTool wires a tool taking a required course_id.
-func courseIDTool(name, desc string, fn func(context.Context, int64) (any, error)) tool {
-	return tool{
+func courseIDTool(name, desc string, fn func(context.Context, int64) (any, error)) Tool {
+	return Tool{
 		Name:        name,
 		Description: desc,
 		Schema:      objectSchema(map[string]any{"course_id": intProp("Garmin course id")}, "course_id"),
@@ -358,8 +358,8 @@ func courseIDTool(name, desc string, fn func(context.Context, int64) (any, error
 }
 
 // workoutIDTool wires a tool taking a required workout_id.
-func workoutIDTool(name, desc string, fn func(context.Context, int64) (any, error)) tool {
-	return tool{
+func workoutIDTool(name, desc string, fn func(context.Context, int64) (any, error)) Tool {
+	return Tool{
 		Name:        name,
 		Description: desc,
 		Schema:      objectSchema(map[string]any{"workout_id": intProp("Garmin workout id")}, "workout_id"),
@@ -379,8 +379,8 @@ func workoutIDTool(name, desc string, fn func(context.Context, int64) (any, erro
 }
 
 // activityIDTool wires a tool taking a required activity_id.
-func activityIDTool(name, desc string, fn func(context.Context, int64) (any, error)) tool {
-	return tool{
+func activityIDTool(name, desc string, fn func(context.Context, int64) (any, error)) Tool {
+	return Tool{
 		Name:        name,
 		Description: desc,
 		Schema:      objectSchema(map[string]any{"activity_id": intProp("Garmin activity id")}, "activity_id"),

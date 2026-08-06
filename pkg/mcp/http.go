@@ -11,23 +11,38 @@ import (
 // maxHTTPBody bounds an incoming JSON-RPC message (GPX imports can be large).
 const maxHTTPBody = 8 << 20
 
-// NewHTTPHandler serves the MCP streamable-HTTP transport: each POST carries
-// one JSON-RPC message and gets its JSON-RPC response back (notifications are
-// acknowledged with 202 and no body). The transport is stateless — no session
-// is kept between calls, which is all the tools/call workflow needs.
-//
-// resolve authenticates the request and returns the Garmin client to serve it
-// with; returning an error rejects the request with 401. This is the
-// multi-user hook: the host application maps its own credentials (bearer
+// NewHTTPHandler serves the Garmin MCP tool set over the streamable-HTTP
+// transport. resolve authenticates the request and returns the Garmin client
+// to serve it with; returning an error rejects the request with 401. This is
+// the multi-user hook: the host application maps its own credentials (bearer
 // token, session…) to a per-user *garmin.Client.
 func NewHTTPHandler(resolve func(*http.Request) (*garmin.Client, error)) http.Handler {
+	return NewHTTPServerHandler(func(r *http.Request) (*Server, error) {
+		client, err := resolve(r)
+		if err != nil {
+			return nil, err
+		}
+		return NewServer(client), nil
+	})
+}
+
+// NewHTTPServerHandler serves an arbitrary MCP Server over the streamable-HTTP
+// transport: each POST carries one JSON-RPC message and gets its JSON-RPC
+// response back (notifications are acknowledged with 202 and no body). The
+// transport is stateless — no session is kept between calls, which is all the
+// tools/call workflow needs.
+//
+// resolve authenticates the request and returns the Server (any tool set —
+// see NewToolServer) handling it; returning an error rejects the request with
+// 401.
+func NewHTTPServerHandler(resolve func(*http.Request) (*Server, error)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			w.Header().Set("Allow", http.MethodPost)
 			http.Error(w, "method not allowed (MCP streamable HTTP: POST one JSON-RPC message)", http.StatusMethodNotAllowed)
 			return
 		}
-		client, err := resolve(r)
+		s, err := resolve(r)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -44,7 +59,6 @@ func NewHTTPHandler(resolve func(*http.Request) (*garmin.Client, error)) http.Ha
 			return
 		}
 
-		s := NewServer(client)
 		result, rerr := s.dispatch(r.Context(), req)
 
 		// A request without an id is a notification: acknowledge, no body.

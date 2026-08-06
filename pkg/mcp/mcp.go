@@ -24,16 +24,19 @@ const serverName = "go-garmin"
 // ServerVersion is reported to MCP clients in the initialize response.
 var ServerVersion = "0.1.0"
 
-// Server serves a Garmin Connect client over the MCP stdio transport.
+// Server serves a set of MCP tools over the stdio or HTTP transport.
 type Server struct {
-	client *garmin.Client
-	tools  []tool
-	index  map[string]tool
+	name    string
+	version string
+	tools   []Tool
+	index   map[string]Tool
 }
 
 // Tool is one MCP tool: a name, a human description, a JSON Schema for its
-// arguments, and a handler that runs it against the Garmin client.
-type tool struct {
+// arguments, and a handler that runs it. The type is exported so hosting
+// applications can build their own MCP servers with this package's transport
+// plumbing (NewToolServer) — the Garmin tool set itself stays internal.
+type Tool struct {
 	Name        string
 	Description string
 	Schema      map[string]any
@@ -42,16 +45,19 @@ type tool struct {
 
 // NewServer builds an MCP server exposing the Garmin client's data.
 func NewServer(client *garmin.Client) *Server {
-	s := &Server{client: client, index: map[string]tool{}}
-	s.register(garminTools(client))
-	return s
+	return NewToolServer(serverName, ServerVersion, garminTools(client)...)
 }
 
-func (s *Server) register(tools []tool) {
+// NewToolServer builds an MCP server from an arbitrary tool set — the
+// domain-neutral entry point for applications reusing this package's JSON-RPC
+// and transport plumbing with their own tools.
+func NewToolServer(name, version string, tools ...Tool) *Server {
+	s := &Server{name: name, version: version, index: map[string]Tool{}}
 	for _, t := range tools {
 		s.tools = append(s.tools, t)
 		s.index[t.Name] = t
 	}
+	return s
 }
 
 // JSON-RPC 2.0 envelopes.
@@ -160,7 +166,7 @@ func (s *Server) handleInitialize(params json.RawMessage) any {
 	return map[string]any{
 		"protocolVersion": version,
 		"capabilities":    map[string]any{"tools": map[string]any{}},
-		"serverInfo":      map[string]any{"name": serverName, "version": ServerVersion},
+		"serverInfo":      map[string]any{"name": s.name, "version": s.version},
 	}
 }
 
