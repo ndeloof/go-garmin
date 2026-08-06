@@ -57,6 +57,7 @@ type Client struct {
 	Download      *DownloadService
 	Gear          *GearService
 	Workouts      *WorkoutsService
+	Courses       *CoursesService
 	Nutrition     *NutritionService
 	WomensHealth  *WomensHealthService
 	Golf          *GolfService
@@ -161,6 +162,7 @@ func NewClient(creds *Credentials, opts ...ClientOption) *Client {
 	c.Download = &DownloadService{c}
 	c.Gear = &GearService{c}
 	c.Workouts = &WorkoutsService{c}
+	c.Courses = &CoursesService{c}
 	c.Nutrition = &NutritionService{c}
 	c.WomensHealth = &WomensHealthService{c}
 	c.Golf = &GolfService{c}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/ndeloof/go-garmin/pkg/garmin"
 )
@@ -281,6 +282,77 @@ func garminTools(c *garmin.Client) []tool {
 				}
 				return c.Workouts.Schedule(ctx, a.WorkoutID, d)
 			},
+		},
+
+		// Courses (GPS routes).
+		noArgTool("list_courses", "List the account's courses (GPS routes).",
+			func(ctx context.Context) (any, error) { return c.Courses.List(ctx) }),
+		courseIDTool("get_course", "Get one course's full payload (metadata + geo points).",
+			func(ctx context.Context, id int64) (any, error) { return c.Courses.Get(ctx, id) }),
+		courseIDTool("delete_course", "Delete a course. A freshly imported course may answer HTTP 429 while still processing — retry after a few seconds.",
+			func(ctx context.Context, id int64) (any, error) { return nil, c.Courses.Delete(ctx, id) }),
+		{
+			Name:        "import_course_gpx",
+			Description: "Create a course from GPX content (parse + save). Returns the created course with its courseId.",
+			Schema: objectSchema(map[string]any{
+				"gpx":         strProp("GPX file content (XML)"),
+				"course_name": strProp("Course name (default: the GPX track name)"),
+			}, "gpx"),
+			Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				a, err := decode[struct {
+					GPX        string `json:"gpx"`
+					CourseName string `json:"course_name"`
+				}](raw)
+				if err != nil {
+					return nil, err
+				}
+				if a.GPX == "" {
+					return nil, fmt.Errorf("gpx is required")
+				}
+				return c.Courses.ImportGPX(ctx, "import.gpx", strings.NewReader(a.GPX), a.CourseName)
+			},
+		},
+		{
+			Name:        "push_course_to_device",
+			Description: "Queue a course for delivery to a device (synced on the device's next connection). Use get_devices to find device ids.",
+			Schema: objectSchema(map[string]any{
+				"course_id": intProp("Garmin course id"),
+				"device_id": intProp("Garmin device id"),
+			}, "course_id", "device_id"),
+			Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				a, err := decode[struct {
+					CourseID int64 `json:"course_id"`
+					DeviceID int64 `json:"device_id"`
+				}](raw)
+				if err != nil {
+					return nil, err
+				}
+				if a.CourseID == 0 || a.DeviceID == 0 {
+					return nil, fmt.Errorf("course_id and device_id are required")
+				}
+				return c.Courses.PushToDevice(ctx, a.CourseID, a.DeviceID)
+			},
+		},
+	}
+}
+
+// courseIDTool wires a tool taking a required course_id.
+func courseIDTool(name, desc string, fn func(context.Context, int64) (any, error)) tool {
+	return tool{
+		Name:        name,
+		Description: desc,
+		Schema:      objectSchema(map[string]any{"course_id": intProp("Garmin course id")}, "course_id"),
+		Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+			a, err := decode[struct {
+				CourseID int64 `json:"course_id"`
+			}](raw)
+			if err != nil {
+				return nil, err
+			}
+			if a.CourseID == 0 {
+				return nil, fmt.Errorf("course_id is required")
+			}
+			return fn(ctx, a.CourseID)
 		},
 	}
 }
