@@ -1,0 +1,292 @@
+{
+ "workoutId": 1669214177,
+ "workoutName": "Trail-S2-2",
+ "description": null,
+ "updatedDate": "2026-08-18T14:23:05.0",
+ "createdDate": "2026-08-18T14:23:05.0",
+ "sportType": {
+  "sportTypeId": 1,
+  "sportTypeKey": "running",
+  "displayOrder": 1
+ },
+ "subSportType": null,
+ "trainingPlanId": null,
+ "estimatedDurationInSecs": null,
+ "estimatedDistanceInMeters": null,
+ "workoutSegments": [
+  {
+   "segmentOrder": 1,
+   "sportType": {
+    "sportTypeId": 1,
+    "sportTypeKey": "running",
+    "displayOrder": 1
+   },
+   "poolLengthUnit": null,
+   "poolLength": null,
+   "avgTrainingSpeed": null,
+   "estimatedDurationInSecs": null,
+   "estimatedDistanceInMeters": null,
+   "estimatedDistanceUnit": null,
+   "estimateType": null,
+   "description": null,
+   "workoutSteps": [
+    {
+     "type": "ExecutableStepDTO",
+     "stepId": 14338679592,
+     "stepOrder": 1,
+     "stepType": {
+      "stepTypeId": 1,
+      "stepTypeKey": "warmup",
+      "displayOrder": 1
+     },
+     "childStepId": null,
+     "description": "\u00c9chauffement libre (~20 min indicatif), lap quand pr\u00eat",
+     "endCondition": {
+      "conditionTypeId": 1,
+      "conditionTypeKey": "lap.button",
+      "displayOrder": 1,
+      "displayable": true
+     },
+     "endConditionValue": null,
+     "preferredEndConditionUnit": null,
+     "endConditionCompare": null,
+     "targetType": {
+      "workoutTargetTypeId": 1,
+      "workoutTargetTypeKey": "no.target",
+      "displayOrder": 1
+     },
+     "targetValueOne": null,
+     "targetValueTwo": null,
+     "targetValueUnit": null,
+     "zoneNumber": null,
+     "secondaryTargetType": null,
+     "secondaryTargetValueOne": null,
+     "secondaryTargetValueTwo": null,
+     "secondaryTargetValueUnit": null,
+     "secondaryZoneNumber": null,
+     "endConditionZone": null,
+     "strokeType": {
+      "strokeTypeId": 0,
+      "strokeTypeKey": null,
+      "displayOrder": 0
+     },
+     "equipmentType": {
+      "equipmentTypeId": 0,
+      "equipmentTypeKey": null,
+      "displayOrder": 0
+     },
+     "category": null,
+     "exerciseName": null,
+     "workoutProvider": null,
+     "providerExerciseSourceId": null,
+     "weightValue": null,
+     "weightUnit": null
+    },
+    {
+     "type": "RepeatGroupDTO",
+     "stepId": 14338679593,
+     "stepOrder": 2,
+     "stepType": {
+      "stepTypeId": 6,
+      "stepTypeKey": "repeat",
+      "displayOrder": 6
+     },
+     "childStepId": 1,
+     "numberOfIterations": 3,
+     "workoutSteps": [
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14338679594,
+       "stepOrder": 3,
+       "stepType": {
+        "stepTypeId": 3,
+        "stepTypeKey": "interval",
+        "displayOrder": 3
+       },
+       "childStepId": 1,
+       "description": "Z2 en c\u00f4te, rythme mod\u00e9r\u00e9",
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 45.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": null
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14338679595,
+       "stepOrder": 4,
+       "stepType": {
+        "stepTypeId": 4,
+        "stepTypeKey": "recovery",
+        "displayOrder": 4
+       },
+       "childStepId": 1,
+       "description": "R\u00e9cup libre (~2 min indicatif), relancer au lap",
+       "endCondition": {
+        "conditionTypeId": 1,
+        "conditionTypeKey": "lap.button",
+        "displayOrder": 1,
+        "displayable": true
+       },
+       "endConditionValue": null,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": null
+      }
+     ],
+     "endConditionValue": 3.0,
+     "preferredEndConditionUnit": null,
+     "endConditionCompare": null,
+     "endCondition": {
+      "conditionTypeId": 7,
+      "conditionTypeKey": "iterations",
+      "displayOrder": 7,
+      "displayable": false
+     },
+     "skipLastRestStep": true,
+     "smartRepeat": false
+    },
+    {
+     "type": "ExecutableStepDTO",
+     "stepId": 14338679596,
+     "stepOrder": 5,
+     "stepType": {
+      "stepTypeId": 2,
+      "stepTypeKey": "cooldown",
+      "displayOrder": 2
+     },
+     "childStepId": null,
+     "description": "Retour au calme Z1, rythme facile",
+     "endCondition": {
+      "conditionTypeId": 2,
+      "conditionTypeKey": "time",
+      "displayOrder": 2,
+      "displayable": true
+     },
+     "endConditionValue": 600.0,
+     "preferredEndConditionUnit": null,
+     "endConditionCompare": null,
+     "targetType": {
+      "workoutTargetTypeId": 1,
+      "workoutTargetTypeKey": "no.target",
+      "displayOrder": 1
+     },
+     "targetValueOne": null,
+     "targetValueTwo": null,
+     "targetValueUnit": null,
+     "zoneNumber": null,
+     "secondaryTargetType": null,
+     "secondaryTargetValueOne": null,
+     "secondaryTargetValueTwo": null,
+     "secondaryTargetValueUnit": null,
+     "secondaryZoneNumber": null,
+     "endConditionZone": null,
+     "strokeType": {
+      "strokeTypeId": 0,
+      "strokeTypeKey": null,
+      "displayOrder": 0
+     },
+     "equipmentType": {
+      "equipmentTypeId": 0,
+      "equipmentTypeKey": null,
+      "displayOrder": 0
+     },
+     "category": null,
+     "exerciseName": null,
+     "workoutProvider": null,
+     "providerExerciseSourceId": null,
+     "weightValue": null,
+     "weightUnit": null
+    }
+   ]
+  }
+ ],
+ "poolLength": null,
+ "poolLengthUnit": null,
+ "locale": null,
+ "workoutProvider": null,
+ "workoutSourceId": null,
+ "uploadTimestamp": null,
+ "atpPlanId": null,
+ "consumer": null,
+ "consumerName": null,
+ "consumerImageURL": null,
+ "consumerWebsiteURL": null,
+ "workoutNameI18nKey": null,
+ "descriptionI18nKey": null,
+ "avgTrainingSpeed": 0.0,
+ "estimateType": null,
+ "estimatedDistanceUnit": {
+  "unitId": null,
+  "unitKey": null,
+  "factor": null
+ },
+ "workoutThumbnailUrl": "https://connect.garmin.com/chart-service/workout?data=md:s1,c1;3(s3,c2=45000.0;s4,c1;)x;s2,c2=600000.0;",
+ "isSessionTransitionEnabled": null,
+ "shared": false
+}

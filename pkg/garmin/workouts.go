@@ -29,6 +29,28 @@ func (s *WorkoutsService) Get(ctx context.Context, workoutID int64) (json.RawMes
 	return raw, err
 }
 
+// GetTyped returns one workout decoded into the typed schema (see
+// workout_schema.go). Fields the schema does not model are dropped.
+func (s *WorkoutsService) GetTyped(ctx context.Context, workoutID int64) (*Workout, error) {
+	var w Workout
+	err := s.c.getJSON(ctx, fmt.Sprintf("/workout-service/workout/%d", workoutID), nil, &w)
+	if err != nil {
+		return nil, err
+	}
+	return &w, nil
+}
+
+// CreateTyped uploads a typed workout and returns the created workout as the
+// server normalised it (ids assigned, catalogue rows completed).
+func (s *WorkoutsService) CreateTyped(ctx context.Context, w *Workout) (*Workout, error) {
+	var created Workout
+	err := s.c.Do(ctx, http.MethodPost, "/workout-service/workout", nil, w, &created)
+	if err != nil {
+		return nil, err
+	}
+	return &created, nil
+}
+
 // Create uploads a workout payload (the workout-service JSON format; see the
 // python-garminconnect workout builders for the shape) and returns the
 // created workout.

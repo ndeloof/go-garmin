@@ -40,6 +40,7 @@ Go client directly.
   | Upload (FIT/GPX/TCX) / download (original ZIP, TCX/GPX/KML/CSV) | `client.Upload` / `client.Download` |
   | Gear | `client.Gear` |
   | Workouts, calendar, training plans, device push | `client.Workouts` |
+  | Typed workout schema (all 9 sports, steps, repeats, targets, weights) + the strength **exercise taxonomy** (47 categories, ~1500 exercises) | `garmin.Workout`, `garmin.ValidExercise` |
   | Courses (GPS routes): list, GPX import/export, delete, device push | `client.Courses` |
   | Nutrition | `client.Nutrition` |
   | Women's health | `client.WomensHealth` |
