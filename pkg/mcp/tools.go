@@ -209,6 +209,37 @@ func garminTools(c *garmin.Client) []Tool {
 			func(ctx context.Context) (any, error) { return c.Metrics.RacePredictions(ctx) }),
 		noArgTool("get_hr_zones", "Get the configured heart-rate zones.",
 			func(ctx context.Context) (any, error) { return c.Biometrics.HeartRateZones(ctx) }),
+		{
+			Name:        "set_hr_zones",
+			Description: "Update the configured heart-rate zone floors (lower bpm bound of each zone, strictly increasing) for one sport's configuration. Optionally also stores a new max heart rate and training method. Returns the configurations as re-read after the update.",
+			Schema: objectSchema(map[string]any{
+				"zone1_floor":     intProp("Zone 1 lower bound, bpm"),
+				"zone2_floor":     intProp("Zone 2 lower bound, bpm"),
+				"zone3_floor":     intProp("Zone 3 lower bound, bpm"),
+				"zone4_floor":     intProp("Zone 4 lower bound, bpm"),
+				"zone5_floor":     intProp("Zone 5 lower bound, bpm"),
+				"max_hr":          intProp("Max heart rate to store (omit: unchanged)"),
+				"sport":           strProp("Sport configuration to update (default: DEFAULT, the account-wide one)"),
+				"training_method": strProp("Training method key to store, e.g. HR_MAX (omit: unchanged)"),
+			}, "zone1_floor", "zone2_floor", "zone3_floor", "zone4_floor", "zone5_floor"),
+			Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				a, err := decode[struct {
+					Z1             int    `json:"zone1_floor"`
+					Z2             int    `json:"zone2_floor"`
+					Z3             int    `json:"zone3_floor"`
+					Z4             int    `json:"zone4_floor"`
+					Z5             int    `json:"zone5_floor"`
+					MaxHR          int    `json:"max_hr"`
+					Sport          string `json:"sport"`
+					TrainingMethod string `json:"training_method"`
+				}](raw)
+				if err != nil {
+					return nil, err
+				}
+				floors := [5]int{a.Z1, a.Z2, a.Z3, a.Z4, a.Z5}
+				return c.Biometrics.UpdateHeartRateZones(ctx, a.Sport, floors, a.MaxHR, a.TrainingMethod)
+			},
+		},
 
 		// Weight & records.
 		rangeTool("get_weight", "Get weight and body-composition data over a range (default last 30 days).", 30,
