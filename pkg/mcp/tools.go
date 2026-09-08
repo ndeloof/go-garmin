@@ -25,6 +25,9 @@ func strProp(desc string) map[string]any {
 func intProp(desc string) map[string]any {
 	return map[string]any{"type": "integer", "description": desc}
 }
+func numProp(desc string) map[string]any {
+	return map[string]any{"type": "number", "description": desc}
+}
 
 var dateProp = map[string]any{"type": "string", "description": "Calendar date, YYYY-MM-DD (default: today)"}
 
@@ -169,6 +172,72 @@ func garminTools(c *garmin.Client) []Tool {
 			func(ctx context.Context, id int64) (any, error) { return c.Activities.Weather(ctx, id) }),
 		activityIDTool("get_activity_hr_zones", "Get time-in-heart-rate-zones for an activity.",
 			func(ctx context.Context, id int64) (any, error) { return c.Activities.HRTimeInZones(ctx, id) }),
+		{
+			Name:        "update_activity",
+			Description: "Edit an activity: rename it, change its description or type, and/or patch summary fields (distance, duration, elevation gain/loss) the way the Connect web editor does. Summary fields are only honored on activities without sensor data for them (manual or indoor activities). Returns the refreshed activity summary.",
+			Schema: objectSchema(map[string]any{
+				"activity_id":      intProp("Garmin activity id"),
+				"name":             strProp("New activity name (omit: unchanged)"),
+				"description":      strProp("New description (omit: unchanged)"),
+				"type_key":         strProp("New activity type key, e.g. walking, hiking, treadmill_running (omit: unchanged)"),
+				"distance_m":       numProp("Distance in meters (omit: unchanged)"),
+				"duration_sec":     numProp("Duration in seconds (omit: unchanged)"),
+				"elevation_gain_m": numProp("Total ascent in meters (omit: unchanged)"),
+				"elevation_loss_m": numProp("Total descent in meters (omit: unchanged)"),
+			}, "activity_id"),
+			Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				a, err := decode[struct {
+					ActivityID  int64    `json:"activity_id"`
+					Name        string   `json:"name"`
+					Description *string  `json:"description"`
+					TypeKey     string   `json:"type_key"`
+					DistanceM   *float64 `json:"distance_m"`
+					DurationSec *float64 `json:"duration_sec"`
+					ElevGainM   *float64 `json:"elevation_gain_m"`
+					ElevLossM   *float64 `json:"elevation_loss_m"`
+				}](raw)
+				if err != nil {
+					return nil, err
+				}
+				if a.ActivityID == 0 {
+					return nil, fmt.Errorf("activity_id is required")
+				}
+				if a.Name != "" {
+					if err := c.Activities.SetName(ctx, a.ActivityID, a.Name); err != nil {
+						return nil, err
+					}
+				}
+				if a.Description != nil {
+					if err := c.Activities.SetDescription(ctx, a.ActivityID, *a.Description); err != nil {
+						return nil, err
+					}
+				}
+				if a.TypeKey != "" {
+					if err := c.Activities.SetType(ctx, a.ActivityID, garmin.ActivityType{TypeKey: a.TypeKey}); err != nil {
+						return nil, err
+					}
+				}
+				summary := map[string]any{}
+				if a.DistanceM != nil {
+					summary["distance"] = *a.DistanceM
+				}
+				if a.DurationSec != nil {
+					summary["duration"] = *a.DurationSec
+				}
+				if a.ElevGainM != nil {
+					summary["elevationGain"] = *a.ElevGainM
+				}
+				if a.ElevLossM != nil {
+					summary["elevationLoss"] = *a.ElevLossM
+				}
+				if len(summary) > 0 {
+					if err := c.Activities.UpdateSummary(ctx, a.ActivityID, summary); err != nil {
+						return nil, err
+					}
+				}
+				return c.Activities.Get(ctx, a.ActivityID)
+			},
+		},
 
 		// Daily health & wellness.
 		dateTool("get_daily_summary", "Get the daily wellness summary (steps, calories, stress, body battery, RHR).",

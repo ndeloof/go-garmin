@@ -223,6 +223,15 @@ func (s *ActivitiesService) SetType(ctx context.Context, activityID int64, t Act
 	return s.put(ctx, activityID, map[string]any{"activityId": activityID, "activityTypeDTO": t})
 }
 
+// UpdateSummary patches summary fields of an activity the way the Connect
+// web activity editor does: the given fields (distance, elevationGain,
+// elevationLoss, duration…) are sent inside summaryDTO. The server only
+// honors fields that are editable for that activity — typically manual or
+// indoor activities without sensor data for them.
+func (s *ActivitiesService) UpdateSummary(ctx context.Context, activityID int64, fields map[string]any) error {
+	return s.put(ctx, activityID, map[string]any{"activityId": activityID, "summaryDTO": fields})
+}
+
 func (s *ActivitiesService) put(ctx context.Context, activityID int64, body any) error {
 	return s.c.Do(ctx, http.MethodPut, fmt.Sprintf("/activity-service/activity/%d", activityID), nil, body, nil)
 }
