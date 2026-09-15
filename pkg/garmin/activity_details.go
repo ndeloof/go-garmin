@@ -155,9 +155,15 @@ const (
 
 // ExerciseSetExercise is one candidate exercise of a set. Garmin's own
 // on-watch auto-detection lists several candidates with a Probability each; a
-// manually logged set (this package's use case) carries exactly one, and
-// Probability is left at zero (Garmin defaults it sensibly on write — it only
-// matters for the read side, where the watch reports its confidence).
+// manually logged set (this package's use case) normally carries exactly one,
+// which should be left at its zero value — MarshalJSON defaults a zero
+// Probability to 100 on write. A real auto-detected candidate is never
+// reported at 0 (the lowest one still carries a nonzero share), so 0 is
+// never a meaningful confidence score to send deliberately; treating it as
+// "unset → certain" avoids a real footgun found the hard way: Garmin
+// silently stores a literal 0 as "not confidently identified", and its own
+// apps then decline to show the exercise icon/link for that set even though
+// the category/name are correctly persisted and readable back via the API.
 // Name is nil for a category with no specific movement (e.g. a plain
 // PUSH_UP, never mapped to a named variant).
 type ExerciseSetExercise struct {
@@ -167,22 +173,19 @@ type ExerciseSetExercise struct {
 }
 
 func (e ExerciseSetExercise) MarshalJSON() ([]byte, error) {
+	prob := e.Probability
+	if prob == 0 {
+		prob = 100
+	}
 	return json.Marshal(struct {
-		Category    string   `json:"category"`
-		Name        *string  `json:"name"`
-		Probability *float64 `json:"probability,omitempty"`
+		Category    string  `json:"category"`
+		Name        *string `json:"name"`
+		Probability float64 `json:"probability"`
 	}{
 		Category:    e.Category,
 		Name:        e.Name,
-		Probability: nonZero(e.Probability),
+		Probability: prob,
 	})
-}
-
-func nonZero(f float64) *float64 {
-	if f == 0 {
-		return nil
-	}
-	return &f
 }
 
 // ExerciseSet is one set — or the rest between two sets — of a strength
