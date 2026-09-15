@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 // ActivityDetails is the sample/chart payload of one activity. Garmin returns
@@ -141,6 +142,118 @@ func (s *ActivitiesService) ExerciseSets(ctx context.Context, activityID int64) 
 // "Invalid Sub-Category Passed" means an unknown name).
 func (s *ActivitiesService) SetExerciseSets(ctx context.Context, activityID int64, payload any) error {
 	return s.c.Do(ctx, http.MethodPut, fmt.Sprintf("/activity-service/activity/%d/exerciseSets", activityID), nil, payload, nil)
+}
+
+// ExerciseSetType distinguishes a worked set from the rest between two sets,
+// as returned in ExerciseSets and expected by SetTypedExerciseSets.
+type ExerciseSetType string
+
+const (
+	ExerciseSetActive ExerciseSetType = "ACTIVE"
+	ExerciseSetRest   ExerciseSetType = "REST"
+)
+
+// ExerciseSetExercise is one candidate exercise of a set. Garmin's own
+// on-watch auto-detection lists several candidates with a Probability each; a
+// manually logged set (this package's use case) carries exactly one, and
+// Probability is left at zero (Garmin defaults it sensibly on write — it only
+// matters for the read side, where the watch reports its confidence).
+// Name is nil for a category with no specific movement (e.g. a plain
+// PUSH_UP, never mapped to a named variant).
+type ExerciseSetExercise struct {
+	Category    string
+	Name        *string
+	Probability float64
+}
+
+func (e ExerciseSetExercise) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Category    string   `json:"category"`
+		Name        *string  `json:"name"`
+		Probability *float64 `json:"probability,omitempty"`
+	}{
+		Category:    e.Category,
+		Name:        e.Name,
+		Probability: nonZero(e.Probability),
+	})
+}
+
+func nonZero(f float64) *float64 {
+	if f == 0 {
+		return nil
+	}
+	return &f
+}
+
+// ExerciseSet is one set — or the rest between two sets — of a strength
+// activity's exerciseSets list, as read by ExerciseSets and written by
+// SetTypedExerciseSets. Reverse-engineered from real Garmin Connect payloads
+// (undocumented API): a REST set carries WeightGrams -1 and no exercises; an
+// ACTIVE set carries WeightGrams 0 for a bodyweight movement, otherwise the
+// load in GRAMS (not kg). RepetitionCount is nil for a REST set, or for an
+// ACTIVE set with no counted reps (a held/timed movement — only Duration
+// then matters).
+type ExerciseSet struct {
+	SetType         ExerciseSetType
+	Duration        time.Duration
+	RepetitionCount *int
+	WeightGrams     float64
+	Exercises       []ExerciseSetExercise
+	// StartTime is the local wall-clock instant the set began. Nil for a
+	// REST set — Garmin infers the gap from the surrounding ACTIVE sets'
+	// StartTime + Duration.
+	StartTime *time.Time
+}
+
+func (s ExerciseSet) MarshalJSON() ([]byte, error) {
+	exercises := s.Exercises
+	if exercises == nil {
+		exercises = []ExerciseSetExercise{}
+	}
+	var startTime *string
+	if s.StartTime != nil {
+		t := localTimestamp(*s.StartTime)
+		startTime = &t
+	}
+	return json.Marshal(struct {
+		SetType         ExerciseSetType       `json:"setType"`
+		Duration        float64               `json:"duration"`
+		RepetitionCount *int                  `json:"repetitionCount"`
+		Weight          float64               `json:"weight"`
+		Exercises       []ExerciseSetExercise `json:"exercises"`
+		StartTime       *string               `json:"startTime"`
+	}{
+		SetType:         s.SetType,
+		Duration:        s.Duration.Seconds(),
+		RepetitionCount: s.RepetitionCount,
+		Weight:          s.WeightGrams,
+		Exercises:       exercises,
+		StartTime:       startTime,
+	})
+}
+
+// SetTypedExerciseSets is a typed, validated convenience over
+// SetExerciseSets: every ACTIVE set's exercises are checked against the FIT
+// taxonomy (ValidExercise) before sending — Garmin accepts an unknown pair
+// silently server-side (it just renders as a generic exercise on the web/app,
+// same caveat as WorkoutStep), so this catches a typo/stale mapping at
+// caller-visible cost instead.
+func (s *ActivitiesService) SetTypedExerciseSets(ctx context.Context, activityID int64, sets []ExerciseSet) error {
+	for i, st := range sets {
+		for _, e := range st.Exercises {
+			name := ""
+			if e.Name != nil {
+				name = *e.Name
+			}
+			if name != "" && !ValidExercise(e.Category, name) {
+				return fmt.Errorf("garmin: exercise set %d: unknown (category, name) pair (%q, %q)", i, e.Category, name)
+			}
+		}
+	}
+	// activityId is required at the top level alongside exerciseSets — Garmin
+	// rejects the write otherwise ("Activity ID should not be Null in the
+	// Exercises Object"), even though it is redundant with the URL path.
+	return s.SetExerciseSets(ctx, activityID, map[string]any{"activityId": activityID, "exerciseSets": sets})
 }
 
 func (s *ActivitiesService) rawGet(ctx context.Context, activityID int64, suffix string) (json.RawMessage, error) {
