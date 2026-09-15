@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ndeloof/go-garmin/pkg/garmin"
 )
@@ -172,6 +173,54 @@ func garminTools(c *garmin.Client) []Tool {
 			func(ctx context.Context, id int64) (any, error) { return c.Activities.Weather(ctx, id) }),
 		activityIDTool("get_activity_hr_zones", "Get time-in-heart-rate-zones for an activity.",
 			func(ctx context.Context, id int64) (any, error) { return c.Activities.HRTimeInZones(ctx, id) }),
+		{
+			Name:        "create_activity",
+			Description: "Create a manual activity (no device file): name, type key, local start time, duration, distance, and optionally an elevation gain (applied as a summary patch right after creation). Returns the created activity.",
+			Schema: objectSchema(map[string]any{
+				"name":             strProp("Activity name"),
+				"type_key":         strProp("Activity type key, e.g. walking, hiking, running"),
+				"start_local":      strProp("Local wall-clock start, YYYY-MM-DDTHH:MM:SS"),
+				"timezone":         strProp("IANA timezone unit key (default: Europe/Paris)"),
+				"duration_sec":     numProp("Duration in seconds"),
+				"distance_m":       numProp("Distance in meters"),
+				"elevation_gain_m": numProp("Total ascent in meters (optional)"),
+			}, "name", "type_key", "start_local", "duration_sec", "distance_m"),
+			Handler: func(ctx context.Context, raw json.RawMessage) (any, error) {
+				a, err := decode[struct {
+					Name        string  `json:"name"`
+					TypeKey     string  `json:"type_key"`
+					StartLocal  string  `json:"start_local"`
+					Timezone    string  `json:"timezone"`
+					DurationSec float64 `json:"duration_sec"`
+					DistanceM   float64 `json:"distance_m"`
+					ElevGainM   float64 `json:"elevation_gain_m"`
+				}](raw)
+				if err != nil {
+					return nil, err
+				}
+				start, err := time.Parse("2006-01-02T15:04:05", a.StartLocal)
+				if err != nil {
+					return nil, fmt.Errorf("invalid start_local (want YYYY-MM-DDTHH:MM:SS): %w", err)
+				}
+				tz := a.Timezone
+				if tz == "" {
+					tz = "Europe/Paris"
+				}
+				created, err := c.Activities.CreateManual(ctx, garmin.ManualActivity{
+					Name: a.Name, TypeKey: a.TypeKey, Start: start, TimeZone: tz,
+					Distance: a.DistanceM, Duration: a.DurationSec,
+				})
+				if err != nil {
+					return nil, err
+				}
+				if a.ElevGainM > 0 {
+					if err := c.Activities.UpdateSummary(ctx, created.ActivityID, map[string]any{"elevationGain": a.ElevGainM}); err != nil {
+						return nil, fmt.Errorf("activity %d created but elevation update failed: %w", created.ActivityID, err)
+					}
+				}
+				return c.Activities.Get(ctx, created.ActivityID)
+			},
+		},
 		{
 			Name:        "update_activity",
 			Description: "Edit an activity: rename it, change its description or type, and/or patch summary fields (distance, duration, elevation gain/loss) the way the Connect web editor does. Summary fields are only honored on activities without sensor data for them (manual or indoor activities). Returns the refreshed activity summary.",
