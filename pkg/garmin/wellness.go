@@ -60,6 +60,53 @@ func (s *WellnessService) HRV(ctx context.Context, date Date) (json.RawMessage, 
 	return raw, err
 }
 
+// HRV qualitative status values (hrvSummary.status in the raw payload).
+// NONE means Garmin has not accumulated enough baseline data yet to classify
+// the reading — distinct from an absent/errored call.
+const (
+	HRVStatusBalanced   = "BALANCED"
+	HRVStatusUnbalanced = "UNBALANCED"
+	HRVStatusLow        = "LOW"
+	HRVStatusPoor       = "POOR"
+	HRVStatusNone       = "NONE"
+)
+
+// HRVStatus is Garmin's day-level HRV classification, parsed from the
+// "hrvSummary" object of the same payload HRV returns raw.
+//
+// Schema based on Garmin Connect's publicly documented, community
+// reverse-engineered structure (the same one python-garminconnect's
+// get_hrv_data exposes) — {"hrvSummary": {"status": "...", "weeklyAvg": N,
+// "lastNightAvg": N}} — NOT yet confirmed against a live call from this
+// library's own test suite (no linked test account was available at
+// authoring time). Callers should treat an unrecognised Status value the
+// same as HRVStatusNone (unknown, not degraded) until this is verified
+// against a real account and this comment can be updated.
+type HRVStatus struct {
+	Status       string `json:"status"`
+	WeeklyAvg    *int   `json:"weeklyAvg"`
+	LastNightAvg *int   `json:"lastNightAvg"`
+}
+
+// HRVSummary returns the day's HRV status classification. Returns a zero
+// HRVStatus (Status == "") rather than an error when the payload has no
+// "hrvSummary" object (e.g. a device without HRV support) — callers already
+// have to handle HRVStatusNone as "no real signal", so an empty Status folds
+// into that same handling instead of needing its own error path.
+func (s *WellnessService) HRVSummary(ctx context.Context, date Date) (*HRVStatus, error) {
+	raw, err := s.HRV(ctx, date)
+	if err != nil {
+		return nil, err
+	}
+	var payload struct {
+		HRVSummary HRVStatus `json:"hrvSummary"`
+	}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, err
+	}
+	return &payload.HRVSummary, nil
+}
+
 // SleepData is the daily sleep payload; the full detail (sleep levels,
 // movement…) stays in Raw.
 type SleepData struct {
