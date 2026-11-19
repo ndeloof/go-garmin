@@ -130,7 +130,9 @@ inspired by [taxuspt/garmin_mcp](https://github.com/taxuspt/garmin_mcp).
 It offers ~39 tools:
 
 - **read**: `get_profile`, `list_activities`, `get_activity`,
-  `get_activity_details`, `get_activity_splits`, `get_daily_summary`,
+  `get_activity_details`, `get_activity_splits`,
+  `get_activity_exercise_sets` (reps, load and exercise of each strength set),
+  `get_daily_summary`,
   `get_sleep`, `get_heart_rate`, `get_body_battery`, `get_stress`, `get_hrv`,
   `get_training_readiness`, `get_training_status`, `get_vo2max`,
   `get_endurance_score`, `get_hill_score`, `get_race_predictions`,

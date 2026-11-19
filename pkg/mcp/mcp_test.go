@@ -33,6 +33,10 @@ func testClient(t *testing.T) *garmin.Client {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[{"activityId":1,"activityName":"Run"}]`))
 	})
+	mux.HandleFunc("/activity-service/activity/42/exerciseSets", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"activityId":42,"exerciseSets":[{"setType":"ACTIVE","duration":24,"repetitionCount":8,"weight":86000,"exercises":[{"category":"SQUAT","name":"BARBELL_BACK_SQUAT","probability":100}]}]}`))
+	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
@@ -117,6 +121,20 @@ func TestToolCallWithArgs(t *testing.T) {
 	res, _ := json.Marshal(resp.Result)
 	if !strings.Contains(string(res), "Run") {
 		t.Fatalf("tool result = %s", res)
+	}
+}
+
+func TestToolCallExerciseSets(t *testing.T) {
+	s := testServer(t)
+	resp := roundTrip(t, s, `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_activity_exercise_sets","arguments":{"activity_id":42}}}`)
+	if resp.Error != nil {
+		t.Fatalf("error: %+v", resp.Error)
+	}
+	res, _ := json.Marshal(resp.Result)
+	for _, want := range []string{"BARBELL_BACK_SQUAT", "86000", "repetitionCount"} {
+		if !strings.Contains(string(res), want) {
+			t.Fatalf("tool result missing %q: %s", want, res)
+		}
 	}
 }
 

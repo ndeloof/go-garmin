@@ -173,6 +173,8 @@ func garminTools(c *garmin.Client) []Tool {
 			func(ctx context.Context, id int64) (any, error) { return c.Activities.Weather(ctx, id) }),
 		activityIDTool("get_activity_hr_zones", "Get time-in-heart-rate-zones for an activity.",
 			func(ctx context.Context, id int64) (any, error) { return c.Activities.HRTimeInZones(ctx, id) }),
+		activityIDTool("get_activity_exercise_sets", "Get a strength activity's exercise sets: each set's type (ACTIVE or REST), duration in seconds, repetition count, weight in grams (-1 on a rest, 0 for bodyweight) and exercise category/name.",
+			func(ctx context.Context, id int64) (any, error) { return c.Activities.ExerciseSets(ctx, id) }),
 		{
 			Name:        "create_activity",
 			Description: "Create a manual activity (no device file): name, type key, local start time, duration, distance, and optionally an elevation gain (applied as a summary patch right after creation). Returns the created activity.",
